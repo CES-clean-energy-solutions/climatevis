@@ -1,0 +1,29 @@
+# Essential dependencies for app_weather_explorer.py
+ipython
+
+# Core framework
+# marimo>=0.12.0
+
+# Data manipulation
+numpy
+pandas
+
+# Plotting and visualization
+plotly
+kaleido
+matplotlib
+
+# Psychrometric calculations
+psychrolib
+
+# Weather data processing
+ladybug-core
+
+# Solar radiation calculations
+pvlib
+
+# PDF generation
+PyPDF2
+
+# YAML configuration
+PyYAML

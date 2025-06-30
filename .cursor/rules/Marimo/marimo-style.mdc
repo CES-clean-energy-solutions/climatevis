@@ -1,0 +1,726 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+---
+name: Marimo Dashboard Development
+description: >
+  Guidelines for developing interactive Marimo dashboard apps in this monorepo.
+  Describes app structure, shared `lib/` libraries, UI conventions, and domain-specific focus.
+globs:
+  - "**/*.py"
+alwaysApply: false
+---
+
+# Marimo App Development Guidelines
+
+## Marimo App Basics
+- **Marimo Application Files:** All Python files that use the `@app.cell` decorator (typically prefixed with `app_*.py`) are **Marimo app dashboards**. They can function additionally as standalone scripts for testing. Each such file is meant to be run in Marimo's browser-based UI, providing an interactive dashboard interface. They may be run in a console.
+- **Interactive Notebook Model:** Marimo apps function like reactive notebooks. The `marimo.App` object (usually created as `app = marimo.App(...)`) orchestrates the execution of cells. Each function decorated with `@app.cell` represents a **cell** in the dashboard. These cells can produce visual output or UI elements, and their return values can be used as inputs to other cells. Marimo determines the execution order based on these dependencies (function arguments), not by the order of definition alone.
+- **Frontend (Not a Script):** Because Marimo apps run in a web UI, they serve as the **front-end of the system**. They are event-driven and update in response to user interactions (e.g., widget changes or button clicks) rather than executing top-to-bottom once. We typically include `app.run()` under a `if __name__ == "__main__":` guard to launch the app, but there is no conventional `main()` function doing sequential work.
+
+## Shared Libraries in the `lib/` Directory
+- **Monorepo Structure:** This project uses a **monorepo** style where common code is organized under a top-level `lib/` folder. The `lib/` directory contains reusable modules and subpackages (for example, `util/`, `plots/`, `components/`, `psychrometrics/`, `simulation/`, etc.) that encapsulate functionality shared across multiple Marimo apps.
+- **Importing Local Modules:** Marimo app files modify `sys.path` to include the `lib` directory (e.g., using `sys.path.insert(0, "./lib")` or proper relative paths). This allows us to import our shared code directly. For instance, we might use statements like `from util import util_plotly` or `import plots` within a cell. Such imports refer to **first-party local modules** inside the `lib` folder, not external packages. **Treat any imports from these `lib/` subpackages as local project code** – they should not be marked as unresolved or missing.
+- **Reusable Components:** Code in `lib/` is designed to be reused by the interactive apps. Utilities (e.g., `util_plotly.py` for Plotly graph themes, `util_epw.py` for EPW file handling), plotting functions (`plots/` package), UI components (`components/` package), and domain-specific logic (e.g. `simulation/state_point.py`, `psychrometrics/`) all live in this folder. Organizing code this way keeps the app files focused on assembling the dashboard, while complex logic is implemented in the shared library.
+
+## Cell Function Naming and Organization Conventions
+
+### Cell Function Naming (CRITICAL FOR TRACEABILITY)
+- **ALWAYS name cell functions descriptively** instead of using anonymous `_()` functions
+- **Function names should describe the cell's purpose** using snake_case convention
+- **Use consistent naming patterns** for similar cell types:
+
+```python
+# ✅ GOOD - Descriptive function names
+@app.cell
+def setup_imports():
+    import marimo as mo
+    import pandas as pd
+    return mo, pd
+
+@app.cell
+def create_input_widgets(mo):
+    temperature_slider = mo.ui.slider(0, 100, value=20)
+    return temperature_slider,
+
+@app.cell
+def process_simulation_data(temperature_slider, pd):
+    # Process data based on inputs
+    results = simulate_temperature(temperature_slider.value)
+    return results,
+
+@app.cell
+def display_results_plot(results, mo):
+    plot = create_temperature_plot(results)
+    return mo.as_html(plot)
+
+# ❌ BAD - Anonymous functions (hard to debug)
+@app.cell
+def _():
+    # What does this cell do?
+    return some_data,
+
+@app.cell
+def _(some_data):
+    # No way to identify this cell's purpose
+    return processed_data,
+```
+
+### Naming Convention Categories
+- **`setup_*`**: Initial imports, configuration, constants
+- **`create_*_widgets`**: UI widget creation (inputs, controls)
+- **`process_*_data`**: Data processing, calculations, transformations
+- **`compute_*`**: Heavy computations, simulations, analysis
+- **`display_*`**: Visualization, output display, results presentation
+- **`handle_*_events`**: Event handlers, callbacks, user interactions
+- **`validate_*`**: Input validation, error checking
+- **`export_*`**: Data export, file downloads, external outputs
+
+## Code Organization Structure
+Our Marimo dashboard apps follow a consistent structure to enhance readability and maintainability:
+
+### 1. App Configuration and Imports
+```python
+@app.cell
+def setup_app_config():
+    import marimo
+    __generated_with = "0.12.0"
+    app = marimo.App(width="medium")
+    return app,
+
+@app.cell
+def setup_core_imports():
+    import marimo as mo
+    import sys
+    return mo, sys
+
+@app.cell
+def setup_domain_imports(sys):
+    # Domain-specific imports
+    sys.path.insert(0, "/workspaces/microclimate/lib")
+    from simulation import heat_balance
+    return heat_balance,
+```
+
+### 2. Configuration and Input Widgets
+```python
+@app.cell
+def create_simulation_config_widgets(mo):
+    # Simulation parameters
+    timestep_slider = mo.ui.slider(...)
+    return timestep_slider,
+
+@app.cell
+def create_zone_config_widgets(mo):
+    # Zone configuration widgets
+    return zone_area, zone_height,
+```
+
+### 3. Data Processing and Computation
+```python
+@app.cell
+def process_simulation_parameters(timestep_slider, zone_area):
+    # Process inputs into simulation parameters
+    return config,
+
+@app.cell
+def run_simulation(config, run_button):
+    # Main computation when triggered
+    return results, success, error_msg,
+```
+
+### 4. Visualization and Display
+```python
+@app.cell
+def display_status_message(success, error_msg, mo):
+    # Show simulation status
+    return status_display,
+
+@app.cell
+def create_results_plots(results, success):
+    # Generate visualization
+    return main_plot,
+
+@app.cell
+def display_results_plots(main_plot, mo):
+    # Display the plots
+    return mo.as_html(main_plot),
+```
+
+## Interactive UI Elements and Display Requirements
+
+### Critical Display Rules
+- **ALWAYS END WITH FINAL EXPRESSION FOR DISPLAY:** For any cell to display content in the UI, it MUST end with a final expression. Content inside if-statements without a final expression will NOT be displayed.
+- **Return statements are for DATA PASSING between cells, final expressions are for UI DISPLAY**
+- **Conditional Display Pattern:**
+  ```python
+  @app.cell
+  def display_conditional_content(mo, condition):
+      if condition:
+          content = mo.md("Success message")
+      else:
+          content = mo.md("Default message")
+      content  # Final expression - this displays in UI
+  ```
+- **NEVER do this** (content won't display):
+  ```python
+  @app.cell
+  def broken_display_example(mo, condition):
+      if condition:
+          mo.md("This won't show!")  # ❌ Inside if-statement, no final expression
+      return mo.md("This won't show either!")  # ❌ Return statement doesn't display
+  ```
+- **Correct way to do BOTH data passing AND display:**
+  ```python
+  @app.cell
+  def correct_display_and_data_passing(mo, data):
+      # Process data
+      processed_data = transform(data)
+
+      # Create display content
+      display_content = mo.md(f"Processed {len(processed_data)} items")
+
+      # Display in UI with final expression
+      display_content
+      return processed_data,  # Pass data to other cells
+  ```
+
+### Variable Conflicts and Namespace Management
+- **Global Namespace Conflicts:** App cells can conflict if the return variables are in the global namespace. If multiple cells return variables with the same name, Marimo will throw "variable defined by another cell" errors.
+- **CRITICAL: Underscore Variables are LOCAL ONLY:** Use underscore `_` prefixing ONLY for temporary/local variables that should NOT be accessed by other cells (e.g., `_tmp`, `_i`, `_j` for loop counters, `_row`, `_headers` for intermediate UI construction).
+- **Return ALL Variables Needed by Other Cells:** Variables that are genuinely needed by other cells or for display should be returned normally in the cell's return statement. Each cell should return ALL variables that other cells need to reference.
+- **Key Distinction:** Distinguish between temporary variables (use `_` prefix) and variables that are part of the cell's intended output interface (return normally).
+- **Multiple cells can safely reuse the same underscore-prefixed variable names** since they're local to each cell.
+
+**Example of CORRECT namespace management:**
+```python
+@app.cell
+def process_temperature_data(raw_data):
+    # ✅ GOOD: Temporary variables with underscore prefix (local to cell)
+    _temp_df = raw_data.copy()  # Local temp variable
+    _processed = clean_temperature_data(_temp_df)  # Local temp variable
+    _intermediate_result = calculate_metrics(_processed)  # Local temp variable
+
+    # ✅ GOOD: Variables needed by other cells (return in global namespace)
+    temperature_results = _intermediate_result
+    temperature_summary = create_summary(_intermediate_result)
+
+    # Return ALL variables that other cells need
+    return temperature_results, temperature_summary
+
+@app.cell
+def process_humidity_data(raw_data):
+    # ✅ GOOD: Can reuse same underscore names (they're local)
+    _temp_df = raw_data.copy()  # OK to reuse name (local)
+    _processed = clean_humidity_data(_temp_df)  # OK to reuse name (local)
+    _intermediate_result = calculate_metrics(_processed)  # OK to reuse name (local)
+
+    # ✅ GOOD: Different public variable names (global namespace)
+    humidity_results = _intermediate_result  # Different from temperature_results
+    humidity_summary = create_summary(_intermediate_result)  # Different from temperature_summary
+
+    # Return ALL variables that other cells need
+    return humidity_results, humidity_summary
+
+@app.cell
+def create_ui_widgets(mo, n_zones):
+    # ✅ GOOD: Loop variables with underscore (temporary/local)
+    ua_inputs = {}
+    for _i in range(n_zones):  # _i is local to this cell
+        _row_inputs = {}  # _row_inputs is local to this cell
+        for _j in range(n_zones):  # _j is local to this cell
+            if _i != _j:
+                _row_inputs[_j] = mo.ui.number(value=50.0)  # Temporary variable
+        ua_inputs[_i] = _row_inputs
+
+    # ✅ GOOD: UI widget needed by other cells (return in global namespace)
+    zone_config_widget = mo.ui.form(ua_inputs)
+
+    # Return variables that other cells need to reference
+    return ua_inputs, zone_config_widget
+
+# ❌ WRONG: Don't do this - removes variables other cells need
+@app.cell
+def bad_example_minimal_returns(data):
+    _temp = process_data(data)  # Underscore (local)
+    important_result = finalize(_temp)  # Needed by other cells
+    display_widget = create_widget(important_result)  # Needed for display
+
+    return important_result,  # ❌ Missing display_widget that UI needs!
+
+# ✅ CORRECT: Return what other cells actually need
+@app.cell
+def good_example_complete_returns(data):
+    _temp = process_data(data)  # Underscore (local/temporary)
+    important_result = finalize(_temp)  # Needed by other cells
+    display_widget = create_widget(important_result)  # Needed for display
+
+    # Return ALL variables other cells need
+    return important_result, display_widget
+```
+
+### **Cell Function Return Statement Rules**
+**RULE:** Marimo cell functions can ONLY have **ONE** return statement at the very end of the function. Any logic requiring multiple return paths MUST be wrapped in nested functions.
+
+**❌ WRONG - Multiple returns in cell function:**
+```python
+@app.cell
+def bad_cell_example(inputs, mo):
+    try:
+        result = process_data(inputs)
+        return result  # ❌ ILLEGAL - return inside try block
+    except Exception as e:
+        return None, False, str(e)  # ❌ ILLEGAL - return inside catch block
+```
+
+**✅ CORRECT - Wrap complex logic in nested function:**
+```python
+@app.cell
+def correct_cell_example(inputs, mo):
+    def _process_with_error_handling():
+        try:
+            result = process_data(inputs)
+            return result, True, None  # ✅ OK - inside nested function
+        except Exception as e:
+            return None, False, str(e)  # ✅ OK - inside nested function
+
+    result, success, error = _process_with_error_handling()
+    return result, success, error  # ✅ REQUIRED - single return at cell end
+```
+
+**✅ CORRECT - Display cell pattern:**
+```python
+@app.cell
+def display_results(data, mo):
+    def _create_display():
+        if data is None:
+            return mo.md("❌ No data available").callout(kind="danger")
+        else:
+            return mo.md(f"✅ Processed {len(data)} items").callout(kind="success")
+
+    display_content = _create_display()
+    display_content  # Final expression for UI display
+    return  # ✅ REQUIRED - always end with return (even if empty)
+```
+
+### Error Handling and Validation
+- **Input Validation:** Always validate user inputs before processing, wrapped in nested functions
+- **Graceful Error Handling:** Use try/catch blocks inside nested functions
+- **User-Friendly Error Messages:** Display helpful error messages to users
+```python
+@app.cell
+def validate_and_process_inputs(temperature_input, mo):
+    def _validate_and_process():
+        try:
+            if temperature_input.value < -273.15:
+                error_msg = mo.md("❌ Temperature cannot be below absolute zero!")
+                return error_msg, None, False
+
+            processed_temp = process_temperature(temperature_input.value)
+            success_msg = mo.md("✅ Temperature processed successfully")
+            return success_msg, processed_temp, True
+
+        except Exception as e:
+            error_msg = mo.md(f"❌ Processing failed: {str(e)}")
+            return error_msg, None, False
+
+    message, result, success = _validate_and_process()
+    return message, result, success
+```
+
+### UI Widgets and Interactions
+- **Using `mo.ui` Widgets:** Marimo provides a library of UI widgets (via `marimo.ui`, commonly aliased as `mo.ui`) to make the dashboards interactive: dropdowns, sliders, buttons, tables, etc. Each widget binds to a `.value` and triggers reactive updates when changed.
+- **Widget Naming:** Use descriptive names with widget type FIRST, then purpose (for better grouping and autocomplete):
+  ```python
+  # ✅ GOOD - Type first, then purpose
+  slider_temperature = mo.ui.slider(...)
+  button_simulation_run = mo.ui.button(...)
+  dropdown_zone_type = mo.ui.dropdown(...)
+  number_zone_area = mo.ui.number(...)
+  checkbox_enable_hvac = mo.ui.checkbox(...)
+
+  # ❌ BAD - Purpose first (harder to group)
+  temperature_slider = mo.ui.slider(...)
+  simulation_run_button = mo.ui.button(...)
+  zone_type_dropdown = mo.ui.dropdown(...)
+
+  # ❌ VERY BAD - No descriptive names
+  slider1 = mo.ui.slider(...)
+  button = mo.ui.button(...)
+  dd = mo.ui.dropdown(...)
+```
+
+### Table Widget Requirements (CRITICAL)
+- **`mo.ui.table()` Data MUST be JSON-serializable** - DO NOT pass UI elements directly to tables
+- **✅ CORRECT Table Data Patterns:**
+  ```python
+  # DataFrames (recommended)
+  table_results = mo.ui.table(pandas_dataframe)
+
+  # List of dictionaries (rows)
+  table_data = mo.ui.table([
+      {"Zone": "Zone 1", "Temperature": 25.0, "Status": "Active"},
+      {"Zone": "Zone 2", "Temperature": 23.5, "Status": "Inactive"}
+  ])
+
+  # List of values (single column)
+  table_simple = mo.ui.table(["value1", "value2", "value3"])
+```
+
+- **❌ WRONG - Causes JSON Serialization Errors:**
+  ```python
+  # Don't do this - UI elements can't be JSON serialized
+  bad_table = mo.ui.table([
+      [mo.md("**Header**"), mo.ui.slider(1, 10)],  # ❌ UI elements in table
+      [mo.md("**Row 1**"), mo.ui.number(value=5)]   # ❌ Causes ValueError
+  ])
+```
+
+- **✅ ALTERNATIVE for UI Element Grids - Use Layout Components:**
+  ```python
+  # Use mo.hstack/mo.vstack for grids containing UI elements
+  header_row = mo.hstack([mo.md("**Zone**"), mo.md("**Control**")])
+  zone_rows = []
+  for i in range(n_zones):
+      row = mo.hstack([
+          mo.md(f"**Zone {i+1}**"),
+          mo.ui.number(value=25.0, label=f"Temp {i+1}")
+      ])
+      zone_rows.append(row)
+
+  ui_grid = mo.vstack([header_row] + zone_rows)  # ✅ This works
+```
+
+- **Table Best Practices:**
+  - Use `pagination=False` for small datasets (< 50 rows)
+  - Use `pagination=True` for large datasets
+  - Pass pandas DataFrames when possible for best performance
+  - Use `format_mapping` for custom cell formatting
+  - Remember: Tables are for DATA display, not UI element layout
+- **State and Events:** We use `mo.state()` for storing intermediate status and define event handlers (like button callbacks) inside cells to support event-driven workflows.
+- **Hidden Implementation Cells:** Use `@app.cell(hide_code=True)` to hide code that clutters the marimo editing interface:
+  - **Always hide**: Markdown-only display cells, simple headers, status messages
+  - **Always hide**: Pure display cells that just show results without interesting logic
+  - **Always hide**: Simple widget layout cells (just `mo.hstack`/`mo.vstack` arrangements)
+  - **Keep visible**: Complex computations, data processing, interesting algorithms
+  - **Keep visible**: Widget creation cells (users may want to modify parameters)
+
+  ```python
+  # ✅ HIDE - Just displays markdown
+  @app.cell(hide_code=True)
+  def display_section_header(mo):
+      mo.md("## Configuration")
+
+  # ✅ HIDE - Just displays results
+  @app.cell(hide_code=True)
+  def display_plot_output(plot, mo):
+      mo.as_html(plot)
+
+  # ✅ SHOW - Widget creation (users may want to modify)
+  @app.cell
+  def create_input_widgets(mo):
+      slider_temp = mo.ui.slider(0, 100, value=20)
+      return slider_temp,
+
+  # ✅ SHOW - Interesting computation
+  @app.cell
+  def run_complex_simulation(inputs):
+      # Complex algorithm here
+      results = expensive_computation(inputs)
+      return results,
+  ```
+
+## Documentation and Comments
+
+### Cell-Level Documentation
+- **Add docstrings to complex cells:** Especially for computation-heavy cells
+- **Use inline comments** to explain non-obvious logic
+- **Document cell dependencies:** Explain what inputs the cell expects
+
+```python
+@app.cell
+def compute_heat_balance_solution(zone_config, weather_data, hvac_system):
+    """
+    Solves the heat balance equation iteratively for the building zone.
+
+    Inputs:
+    - zone_config: Zone configuration parameters
+    - weather_data: Hourly weather data DataFrame
+    - hvac_system: HVAC system configuration
+
+    Returns:
+    - solution_results: DataFrame with temperature and load time series
+    - convergence_info: Dictionary with solver convergence details
+    """
+    # Initialize solver with configuration
+    solver = HeatBalanceSolver(zone_config.thermal_mass)
+
+    # Run iterative solution
+    solution_results = solver.solve_hourly(weather_data, hvac_system)
+    convergence_info = solver.get_convergence_stats()
+
+    return solution_results, convergence_info
+```
+
+### App-Level Documentation
+- **Add markdown cells** to explain the app's purpose and usage
+- **Section headers** to organize the dashboard visually
+- **User instructions** for interactive elements
+
+## Performance and Best Practices
+
+### Efficient Cell Organization
+- **Minimize cell dependencies:** Avoid unnecessary cross-dependencies between cells
+- **Separate concerns:** Keep data processing separate from visualization
+- **Cache expensive computations:** Use appropriate caching strategies for slow operations
+- **Lazy evaluation:** Only compute results when inputs change
+
+### Memory Management
+- **Clear large temporary variables:** Use `del` for large intermediate datasets
+- **Efficient data structures:** Choose appropriate data types for your use case
+- **Stream large datasets:** Don't load everything into memory at once
+
+## Testing and Debugging
+
+### Debugging Strategies
+- **Named functions make debugging easier:** Stack traces show function names
+- **Use intermediate variables:** Break complex operations into steps
+- **Add debug prints:** Temporary debug output can be helpful
+- **Test cells individually:** Each cell should work independently when possible
+
+### Example Debug-Friendly Cell
+```python
+@app.cell
+def debug_simulation_inputs(temperature_slider, humidity_slider, mo):
+    """Debug cell to verify input values are reasonable"""
+    debug_info = {
+        'temperature': temperature_slider.value,
+        'humidity': humidity_slider.value,
+        'temp_valid': -50 <= temperature_slider.value <= 50,
+        'humidity_valid': 0 <= humidity_slider.value <= 100
+    }
+
+    debug_display = mo.md(f"""
+    **Debug Info:**
+    - Temperature: {debug_info['temperature']}°C (Valid: {debug_info['temp_valid']})
+    - Humidity: {debug_info['humidity']}% (Valid: {debug_info['humidity_valid']})
+    """)
+
+    return debug_display if __debug__ else mo.md(""), debug_info
+```
+
+## File Structure Best Practices
+
+### App File Organization
+```
+Projects/
+├── Energy_sim/
+│   ├── app_simulation_heat_balance.py      # Main heat balance simulation
+│   ├── app_psychrometric_analysis.py      # Psychrometric charts
+│   └── app_weather_data_explorer.py       # Weather data visualization
+├── HVAC_design/
+│   ├── app_load_calculations.py           # Load calculation tool
+│   └── app_equipment_sizing.py           # Equipment sizing dashboard
+```
+
+### Consistent App Structure Template
+```python
+# Standard app header
+import marimo
+__generated_with = "0.12.0"
+app = marimo.App(width="medium")
+
+# 1. Imports and setup
+@app.cell
+def setup_imports():
+    import marimo as mo
+    return mo,
+
+@app.cell
+def setup_libraries(mo):
+    # Import domain libraries
+    return domain_libs,
+
+# 2. Configuration
+@app.cell
+def create_config_widgets(mo):
+    # Configuration UI
+    return config_widgets,
+
+# 3. Data processing
+@app.cell
+def process_data(config_widgets):
+    # Main data processing
+    return processed_data,
+
+# 4. Visualization
+@app.cell
+def create_visualizations(processed_data):
+    # Generate plots/charts
+    return plots,
+
+@app.cell
+def display_results(plots, mo):
+    # Display final results
+    return mo.as_html(plots),
+
+# Standard app footer
+if __name__ == "__main__":
+    app.run()
+```
+
+This structure ensures consistency across all marimo apps in the project and makes them easier to maintain, debug, and extend.
+
+## Custom Plotting and Visualization Guidelines
+
+### Time Series Plotting with Custom plot_series
+- **ALWAYS use custom `plots.plot_series()` for time series visualization** instead of raw Plotly
+- **Import the plots module** from the shared lib: `import plots`
+- **Use consistent template and paper size parameters** passed from UI widgets
+
+#### Standard Time Series Pattern
+```python
+@app.cell
+def create_timeseries_plot(df, ui_dropdown_template, ui_dropdown_paper_size, ui_dropdown_weather_columns, plots):
+    """Create time series plot using custom plot_series function"""
+    # Use custom plot_series function for all time series
+    fig_timeseries = plots.plot_series(
+        [df[ui_dropdown_weather_columns.value]],
+        template_name=ui_dropdown_template.value,
+        paper_size=ui_dropdown_paper_size.value,
+        y1_axis_title=ui_dropdown_weather_columns.value,
+        mode="line",  # Options: "line", "area", "bar", "markers"
+        show_days=False  # Optional: show daily grid lines
+    )
+    return fig_timeseries,
+
+@app.cell(hide_code=True)
+def display_timeseries_plot(fig_timeseries, ui_dropdown_weather_columns, mo):
+    """Display the time series plot with descriptive title"""
+    title = f"Annual hourly series for {ui_dropdown_weather_columns.value}"
+
+    # Standard layout for plot display
+    components_timeseries = mo.vstack([
+        mo.md(f"## {title}"),
+        fig_timeseries
+    ])
+    return components_timeseries,
+```
+
+#### Multi-Series Time Series Pattern
+```python
+@app.cell
+def create_multi_series_plot(list_multi_weather_series_named, ui_dropdown_template, ui_dropdown_paper_size, ui_dropdown_weather_columns, plots):
+    """Create multi-series comparison plot"""
+    if list_multi_weather_series_named:
+        fig_multi_series = plots.plot_series(
+            list_multi_weather_series_named,  # List of named pandas Series
+            template_name=ui_dropdown_template.value,
+            paper_size=ui_dropdown_paper_size.value,
+            y1_axis_title=ui_dropdown_weather_columns.value
+        )
+    else:
+        fig_multi_series = mo.md("No data selected for comparison")
+
+    return fig_multi_series,
+```
+
+#### Time Series with Bands/Filters Pattern
+```python
+@app.cell
+def create_time_bands_plot(bands_series, ui_dropdown_template, ui_dropdown_paper_size, plots):
+    """Create plot with time-of-day bands (day/night separation)"""
+    # bands_series is a list of pandas Series with different time filters
+    fig_bands = plots.plot_series(
+        bands_series,  # Series list with .name and .attrs['color'] properties
+        template_name=ui_dropdown_template.value,
+        paper_size=ui_dropdown_paper_size.value,
+        mode="bar"  # Often used for band comparisons
+    )
+    return fig_bands,
+```
+
+### DataFrame Time Series Pattern
+```python
+@app.cell
+def create_dataframe_timeseries(df_timeseries, ui_dropdown_template, ui_dropdown_paper_size, plots):
+    """Use plot_timeseries_df wrapper for DataFrame input"""
+    # When working with DataFrame directly (wrapper around plot_series)
+    fig_df_timeseries = plots.plot_timeseries_df(
+        df_timeseries,  # DataFrame with DatetimeIndex
+        template_name=ui_dropdown_template.value,
+        paper_size=ui_dropdown_paper_size.value,
+        y1_axis_title="Multiple Variables",
+        mode="line"
+    )
+    return fig_df_timeseries,
+```
+
+### Plotting Best Practices
+- **Series Naming:** Ensure pandas Series have meaningful `.name` attributes for legend labels
+- **Series Attributes:** Use `.attrs` dictionary for metadata like units and colors:
+  ```python
+  series.attrs["unit"] = "m/s"
+  series.attrs["color"] = "red"
+  ```
+- **Template Consistency:** Always pass template from UI dropdown: `ui_dropdown_template.value`
+- **Paper Size Consistency:** Always pass paper size from UI dropdown: `ui_dropdown_paper_size.value`
+- **Y-axis Titles:** Provide descriptive y-axis titles, often from the column name
+- **Plot Modes:** Choose appropriate mode for data type:
+  - `"line"`: Continuous time series (default)
+  - `"area"`: Filled area under curve
+  - `"bar"`: Discrete/categorical time data
+  - `"markers"`: Scatter plot style
+  - `"stacked_bar"`: Multiple series as stacked bars
+
+### Plot Registration for Reports
+```python
+@app.cell
+def register_plot_for_report(fig_annual_profile, register_plot):
+    """Register important plots for PDF report generation"""
+    title = "Annual daily profiles of temperature"
+    description = "Shows min, mean, max daily values throughout the year"
+    register_plot(fig_annual_profile, title=title, description=description)
+    return
+```
+
+### Specialized Plot Functions
+The plots module includes other specialized functions beyond plot_series:
+- `plots.annual_profile_daily()`: Daily min/mean/max profiles
+- `plots.monthly_profiles()`: Monthly average day profiles
+- `plots.exceedance()`: Exceedance probability curves
+- `plots.annual_heatmap()`: Annual heatmap visualization
+- `plots.histogram()`: Histogram plots
+- `plots.cumulative_probability()`: Cumulative distribution plots
+- `plots.wind_rose()`: Wind rose diagrams
+
+#### Example Usage of Specialized Plots
+```python
+@app.cell
+def create_annual_profile(df, ui_dropdown_weather_columns, ui_dropdown_template, ui_dropdown_paper_size, plots):
+    """Create annual daily profile using specialized function"""
+    fig_profile = plots.annual_profile_daily(
+        df[ui_dropdown_weather_columns.value],
+        template_name=ui_dropdown_template.value,
+        paper_size=ui_dropdown_paper_size.value,
+        y_title=ui_dropdown_weather_columns.value
+    )
+    return fig_profile,
+```
+
+### Plot Display Organization
+```python
+@app.cell(hide_code=True)
+def display_plot_section(fig_plot, title, description, mo):
+    """Standard pattern for displaying plots with context"""
+    components_plot_section = mo.vstack([
+        mo.md(f"## {title}"),
+        mo.md(description),
+        fig_plot
+    ])
+    return components_plot_section,
+```
+
+This ensures all time series visualizations use the consistent custom plotting infrastructure while maintaining the flexibility to handle different data types and visualization requirements.

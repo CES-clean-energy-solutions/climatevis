@@ -1,0 +1,16 @@
+# Include template files
+include src/climatevis/templates/*.yaml
+include src/climatevis/templates/*.yml
+
+# Include documentation
+include README.md
+include LICENSE
+
+# Include configuration files
+include pyproject.toml
+
+# Exclude development files
+exclude .gitignore
+exclude .cursor/
+recursive-exclude tests/ *
+recursive-exclude .github/ *

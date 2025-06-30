@@ -1,0 +1,56 @@
+layout:
+  font:
+    family: "Arial, sans-serif"
+    size: 12
+    color: "black"
+  title:
+    font:
+      size: 18
+    x: 0.5
+    xanchor: "center"
+  paper_bgcolor: "white"
+  plot_bgcolor: "lightgray"
+  xaxis:
+    showgrid: true
+    gridcolor: "lightgray"
+    zeroline: false
+    ticks: "outside"
+    tickwidth: 1
+    ticklen: 5
+    title:
+      font:
+        size: 14
+  yaxis:
+    showgrid: true
+    gridcolor: "lightgray"
+    zeroline: false
+    ticks: "outside"
+    tickwidth: 1
+    ticklen: 5
+    title:
+      font:
+        size: 14
+  legend:
+    font:
+      size: 12
+    orientation: "h"
+    x: 0.5
+    xanchor: "center"
+    y: -0.2
+  margin:
+    l: 50
+    r: 50
+    t: 50
+    b: 50
+data:
+  bar:
+    - marker:
+        color: "orange"
+  scatter:
+    - marker:
+        size: 8
+        color: "blue"
+      mode: "lines+markers"
+  histogram:
+    - marker:
+        color: "teal"

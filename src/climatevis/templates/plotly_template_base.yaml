@@ -1,0 +1,76 @@
+layout:
+  autosize: false
+  plot_bgcolor: "white"   # White background for the plot area
+  font:
+    family: "Arial, sans-serif"
+    size: 12
+    color: "black"
+  title:
+    font:
+      size: 18
+    xanchor: "left"
+    x: 0.01
+    yanchor: "top"
+    y: 0.98
+  xaxis:
+    mirror: "allticks"     # Mirror the axis line on the top
+    showgrid: true         # Enable gridlines
+    gridcolor: "lightgray" # Gridline color
+    showline: true         # Show x-axis line
+    linewidth: 1
+    zeroline: false
+    ticks: "inside"        # Tick marks inside the plot area
+    tickwidth: 1
+    ticklen: 5
+    title:
+      # standoff: 202
+      font:
+        size: 14
+  yaxis:
+    mirror: "allticks"     # Mirror the axis line on the right
+    showgrid: true         # Enable gridlines
+    gridcolor: "lightgray" # Gridline color
+    showline: true         # Show y-axis line
+    linewidth: 1
+    zeroline: false
+    ticks: "inside"        # Tick marks inside the plot area
+    tickwidth: 1
+    ticklen: 5
+    title:
+      standoff: 20
+      font:
+        size: 14
+  legend:
+    font:
+      size: 12
+    orientation: "h"
+    x: 0.5
+    xanchor: "center"
+    y: -0.2
+  margin:
+    l: 60
+    r: 20
+    t: 50
+    b: 60
+data:
+  bar:
+    - marker:
+        color: "orange"
+  scatter:
+    - mode: "lines+markers"
+      marker:
+        size: 8
+        color: "blue"
+    - mode: "lines"         # For area-like plots
+      # fill: "tozeroy"       # Fill the area to the x-axis
+      line:
+        width: 2
+      marker:
+        color: "lightblue"
+  histogram:
+    - marker:
+        color: "steelblue"
+        line:
+          width: 1
+          color: "black"  # Add black border around histogram bars
+        opacity: 0.6      # Transparent histogram bars
