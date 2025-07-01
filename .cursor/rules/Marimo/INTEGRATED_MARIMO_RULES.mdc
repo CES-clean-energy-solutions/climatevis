@@ -175,34 +175,88 @@ def correct_data_and_display_example(mo, data):
     return processed_data,  # Pass data to other cells
 ```
 
-## Cell Return Statement Rules
+## Cell Return Statement Rules - CRITICAL
 
-### Single Return Rule
-**CRITICAL:** Marimo cell functions can ONLY have **ONE** return statement at the very end. Complex logic requiring multiple returns MUST be wrapped in nested functions.
+### 🚨 ABSOLUTE RULE: Return Statement Placement
 
+**CELL FUNCTIONS:**
+- **EXACTLY ONE `return` statement** at the very end of the function
+- **NEVER put `return` inside ANY control block** (`if`, `try`, `for`, `while`, `with`)
+- **NO EXCEPTIONS** - this rule applies to ALL `@app.cell` functions
+
+**NESTED FUNCTIONS (inside cells):**
+- **CAN have multiple `return` statements** as needed
+- **CAN have `return` inside control blocks** - this is where complex logic goes
+
+### ❌ ILLEGAL Patterns - NEVER DO THIS
 ```python
-# ❌ WRONG - Multiple returns in cell function
+# ❌ FATAL ERROR - Multiple returns in cell function
 @app.cell
 def bad_cell_example(inputs):
+    if condition:
+        return result  # ❌ ILLEGAL - return inside if block
     try:
-        result = process_data(inputs)
-        return result  # ❌ ILLEGAL - return inside try
-    except Exception as e:
-        return None, False, str(e)  # ❌ ILLEGAL - return inside catch
+        data = process(inputs)
+        return data  # ❌ ILLEGAL - return inside try block
+    except:
+        return None  # ❌ ILLEGAL - return inside except block
 
-# ✅ CORRECT - Wrap in nested function
+# ❌ FATAL ERROR - Return inside control blocks
+@app.cell
+def another_bad_example(data):
+    for item in data:
+        if item.valid:
+            return item  # ❌ ILLEGAL - return inside for/if
+    return None  # Even with one return at end, others are illegal
+```
+
+### ✅ CORRECT Patterns - ALWAYS DO THIS
+```python
+# ✅ CORRECT - Single return at end, logic in nested function
 @app.cell
 def correct_cell_example(inputs):
-    def _process_with_error_handling():
+    def _process_with_branching():
+        if condition:
+            return process_option_a(inputs)  # ✅ OK in nested function
         try:
-            result = process_data(inputs)
-            return result, True, None
+            data = process_option_b(inputs)
+            return data  # ✅ OK in nested function
         except Exception as e:
-            return None, False, str(e)
+            return f"Error: {e}"  # ✅ OK in nested function
 
-    result, success, error = _process_with_error_handling()
-    return result, success, error  # ✅ Single return at end
+    result = _process_with_branching()
+    return result  # ✅ REQUIRED - single return at end
+
+# ✅ CORRECT - Complex logic wrapped in nested function
+@app.cell
+def correct_error_handling_example(data):
+    def _validate_and_process():
+        if not data:
+            return None, False, "No data provided"
+        try:
+            processed = expensive_operation(data)
+            if processed.is_valid():
+                return processed, True, "Success"
+            else:
+                return None, False, "Validation failed"
+        except Exception as e:
+            return None, False, f"Processing error: {e}"
+
+    result, success, message = _validate_and_process()
+    return result, success, message  # ✅ Single return at end
 ```
+
+### Memory Aid: "One Return Rule"
+- **Cell functions = ONE return only** (at the very end)
+- **Nested functions = Multiple returns OK, a normal function**
+
+### Pre-Cell Return Checklist
+Before writing ANY `@app.cell` function:
+ ❓ Will I need multiple returns or returns inside control blocks?
+ ❓ If YES → try to avoid and simplify
+ ❓ If still YES → Create a nested function to handle the complex logic
+ ❓ Does my cell function have EXACTLY ONE return at the very end?
+ ❓ Are ALL my returns inside nested functions (not the cell function itself)?
 
 ## Variable Management and Namespace
 
@@ -210,6 +264,11 @@ def correct_cell_example(inputs):
 - **Underscore Variables are LOCAL ONLY:** Use `_` prefix for temporary/local variables that shouldn't be accessed by other cells
 - **Return ALL Variables Needed by Other Cells:** Variables genuinely needed by other cells should be returned normally
 - **Avoid Global Namespace Conflicts:** If multiple cells return variables with same name, Marimo throws errors
+
+### Cell checklis for variables;
+ ❓ Check for any global variables, anything that is declared inside the cell function direct scope is global!
+ ❓ If conflict - RENAME to avoid, or add _ char to keep it de-scoped
+
 
 ```python
 @app.cell

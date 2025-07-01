@@ -142,6 +142,69 @@ def load_builtin_template(template_name, register_as=None):
 
     return load_plotly_template(template_name, register_as)
 
+def get_builtin_template_names():
+    """
+    Get a list of all available built-in template names.
+
+    Returns:
+        list: List of built-in template names.
+    """
+    builtin_templates = {
+        'base': 'plotly_template_base.yaml',
+        'base_autosize': 'plotly_template_base_autosize.yaml',
+        'test': 'plotly_template_test.yaml'
+    }
+    return list(builtin_templates.keys())
+
+def get_loaded_template_names():
+    """
+    Get a list of all currently loaded/registered template names.
+
+    Returns:
+        list: List of loaded template names.
+    """
+    return list(pio.templates.keys())
+
+def load_all_builtin_templates():
+    """
+    Load all built-in templates and register them with their default names.
+    This function is called automatically when the package is imported.
+
+    Returns:
+        dict: Dictionary mapping template names to loaded template data.
+    """
+    loaded_templates = {}
+    builtin_names = get_builtin_template_names()
+
+    for template_name in builtin_names:
+        try:
+            template_data = load_builtin_template(template_name)
+            loaded_templates[template_name] = template_data
+            logging.info(f"Auto-loaded template '{template_name}'")
+        except Exception as e:
+            logging.error(f"Failed to auto-load template '{template_name}': {e}")
+
+    return loaded_templates
+
+def get_available_templates():
+    """
+    Get a list of all available template names (both built-in and any custom loaded ones).
+    This is useful for UI components like dropdowns.
+
+    Returns:
+        list: Sorted list of available template names.
+    """
+    # Get built-in templates
+    builtin = get_builtin_template_names()
+
+    # Get any other loaded templates that might not be built-in
+    loaded = get_loaded_template_names()
+
+    # Combine and remove duplicates, then sort
+    all_templates = sorted(set(builtin + loaded))
+
+    return all_templates
+
 def summarize_template(template, template_name):
     """
     Log a summary of the loaded template.

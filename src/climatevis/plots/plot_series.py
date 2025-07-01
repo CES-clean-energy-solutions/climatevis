@@ -1,16 +1,6 @@
 import plotly.graph_objects as go
 import pandas as pd
-from util import util_plotly
-
-import logging
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s"
-)
-import plotly.graph_objects as go
-import pandas as pd
-from util import util_plotly
+from ..util import util_plotly
 
 import logging
 
