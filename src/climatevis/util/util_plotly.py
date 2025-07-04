@@ -79,18 +79,45 @@ def load_plotly_template_from_package(template_filename, template_name):
                     template = yaml.safe_load(file)
             except Exception as e:
                 logging.error(f"Failed to load template via importlib.resources: {e}")
-                logging.info("Falling back to pkg_resources method")
-                # Fallback to pkg_resources
+                logging.info("Trying alternative importlib.resources approach")
+                # Try alternative approach - templates as package data
+                try:
+                    climatevis_files = files('climatevis')
+                    template_path = climatevis_files / 'templates' / template_filename
+                    with template_path.open('r', encoding='utf-8') as file:
+                        template = yaml.safe_load(file)
+                except Exception as e2:
+                    logging.error(f"Alternative importlib.resources approach failed: {e2}")
+                    logging.info("Falling back to pkg_resources method")
+                    # Fallback to pkg_resources
+                    try:
+                        template_content = pkg_resources.resource_string(
+                            'climatevis.templates', template_filename
+                        ).decode('utf-8')
+                        template = yaml.safe_load(template_content)
+                    except Exception as e3:
+                        logging.error(f"pkg_resources with climatevis.templates failed: {e3}")
+                        logging.info("Trying pkg_resources with climatevis package")
+                        # Final fallback - try as package data
+                        template_content = pkg_resources.resource_string(
+                            'climatevis', f'templates/{template_filename}'
+                        ).decode('utf-8')
+                        template = yaml.safe_load(template_content)
+        else:
+            # Fallback to pkg_resources
+            try:
                 template_content = pkg_resources.resource_string(
                     'climatevis.templates', template_filename
                 ).decode('utf-8')
                 template = yaml.safe_load(template_content)
-        else:
-            # Fallback to pkg_resources
-            template_content = pkg_resources.resource_string(
-                'climatevis.templates', template_filename
-            ).decode('utf-8')
-            template = yaml.safe_load(template_content)
+            except Exception as e:
+                logging.error(f"pkg_resources with climatevis.templates failed: {e}")
+                logging.info("Trying pkg_resources with climatevis package")
+                # Final fallback - try as package data
+                template_content = pkg_resources.resource_string(
+                    'climatevis', f'templates/{template_filename}'
+                ).decode('utf-8')
+                template = yaml.safe_load(template_content)
 
         # Register the template with Plotly
         pio.templates[template_name] = template

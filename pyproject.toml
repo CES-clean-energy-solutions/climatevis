@@ -58,7 +58,7 @@ packages = ["climatevis", "climatevis.plots", "climatevis.util", "climatevis.com
 "" = "src"
 
 [tool.setuptools.package-data]
-"climatevis.templates" = ["*.yaml", "*.yml"]
+"climatevis" = ["templates/*.yaml", "templates/*.yml"]
 
 # Development tools configuration
 [tool.black]
