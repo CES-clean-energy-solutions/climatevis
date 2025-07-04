@@ -20,6 +20,13 @@ logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(message)s"
 )
 
+# Built-in template mapping - single source of truth
+BUILTIN_TEMPLATES = {
+    'base': 'plotly_template_base.yaml',
+    'base_autosize': 'plotly_template_base_autosize.yaml',
+    'test': 'plotly_template_test.yaml'
+}
+
 # Predefined paper sizes
 PAPER_SIZES = {
     "A6_LANDSCAPE": {"width": 559, "height": 397},
@@ -59,9 +66,25 @@ def load_plotly_template_from_package(template_filename, template_name):
         # Load template from package data
         if files is not None:
             # Use importlib.resources (Python 3.9+) or importlib_resources
-            template_path = files('climatevis.templates') / template_filename
-            with template_path.open('r', encoding='utf-8') as file:
-                template = yaml.safe_load(file)
+            try:
+                templates_dir = files('climatevis.templates')
+                if templates_dir is None:
+                    raise ValueError("Could not locate climatevis.templates package directory")
+
+                template_path = templates_dir / template_filename
+                if template_path is None:
+                    raise ValueError(f"Could not locate template file: {template_filename}")
+
+                with template_path.open('r', encoding='utf-8') as file:
+                    template = yaml.safe_load(file)
+            except Exception as e:
+                logging.error(f"Failed to load template via importlib.resources: {e}")
+                logging.info("Falling back to pkg_resources method")
+                # Fallback to pkg_resources
+                template_content = pkg_resources.resource_string(
+                    'climatevis.templates', template_filename
+                ).decode('utf-8')
+                template = yaml.safe_load(template_content)
         else:
             # Fallback to pkg_resources
             template_content = pkg_resources.resource_string(
@@ -77,6 +100,9 @@ def load_plotly_template_from_package(template_filename, template_name):
 
     except Exception as e:
         logging.error(f"Failed to load template from package: {e}")
+        logging.error(f"Template filename: {template_filename}")
+        logging.error(f"Template name: {template_name}")
+        logging.error(f"Files module available: {files is not None}")
         raise
 
 def load_plotly_template(yaml_file_path, template_name):
@@ -94,16 +120,9 @@ def load_plotly_template(yaml_file_path, template_name):
     Returns:
         dict: The loaded template.
     """
-    # Built-in template mapping
-    builtin_templates = {
-        'base': 'plotly_template_base.yaml',
-        'base_autosize': 'plotly_template_base_autosize.yaml',
-        'test': 'plotly_template_test.yaml'
-    }
-
     # Check if it's a built-in template name
-    if yaml_file_path in builtin_templates:
-        return load_plotly_template_from_package(builtin_templates[yaml_file_path], template_name)
+    if yaml_file_path in BUILTIN_TEMPLATES:
+        return load_plotly_template_from_package(BUILTIN_TEMPLATES[yaml_file_path], template_name)
 
     # Otherwise, treat as file path (backward compatibility)
     try:
@@ -149,12 +168,7 @@ def get_builtin_template_names():
     Returns:
         list: List of built-in template names.
     """
-    builtin_templates = {
-        'base': 'plotly_template_base.yaml',
-        'base_autosize': 'plotly_template_base_autosize.yaml',
-        'test': 'plotly_template_test.yaml'
-    }
-    return list(builtin_templates.keys())
+    return list(BUILTIN_TEMPLATES.keys())
 
 def get_loaded_template_names():
     """

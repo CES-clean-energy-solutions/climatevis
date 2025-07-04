@@ -52,7 +52,7 @@ Issues = "https://github.com/climatevis/climatevis/issues"
 
 # Package configuration
 [tool.setuptools]
-packages = ["climatevis", "climatevis.plots", "climatevis.util", "climatevis.components"]
+packages = ["climatevis", "climatevis.plots", "climatevis.util", "climatevis.components", "climatevis.templates"]
 
 [tool.setuptools.package-dir]
 "" = "src"
