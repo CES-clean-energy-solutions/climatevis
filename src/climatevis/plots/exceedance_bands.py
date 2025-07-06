@@ -3,6 +3,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import plotly.colors as pc
 from climatevis.util import util_plotly
+from climatevis.util.validation import validate_plot_parameters
 
 def exceedance_bands(series_list: list, template_name: str, paper_size: str, x_title="Exceedance Probability", y_title="", selected_percentile=None):
     """
@@ -10,6 +11,8 @@ def exceedance_bands(series_list: list, template_name: str, paper_size: str, x_t
 
     Parameters:
     - series_list: list of pd.Series objects to plot. Each series should have a name for labeling.
+    - template_name: str, name of the Plotly template to apply
+    - paper_size: str, paper size specification
     - x_title: str, label for the x-axis (Exceedance Probability)
     - y_title: str, label for the y-axis (Sorted Values)
     - selected_percentile: float (0-100), percentile to highlight with a marker and annotation.
@@ -17,9 +20,17 @@ def exceedance_bands(series_list: list, template_name: str, paper_size: str, x_t
     Returns:
     - Plotly Figure
     """
+    # Validate inputs using the validation utility
+    validated_series = validate_plot_parameters(
+        series_list,
+        template_name,
+        paper_size,
+        function_name="exceedance_bands"
+    )
+
     fig = go.Figure()
 
-    for series in series_list:
+    for series in validated_series:
         series_label = series.name if series.name else "Unnamed Series"
         print(series.name)
         sorted_values = np.sort(series)[::-1]  # Sort values in descending order

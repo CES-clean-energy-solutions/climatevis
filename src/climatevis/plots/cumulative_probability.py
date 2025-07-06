@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from climatevis.util import util_plotly
+from climatevis.util.validation import validate_plot_parameters
 from typing import Union, List
 
 def cumulative_probability(series_list: Union[List[pd.Series], pd.Series], template_name: str, paper_size: str, x_title="Value", y_title="Cumulative Probability", selected_percentile=None, y_grid_spacing: int = 10):
@@ -18,18 +19,21 @@ def cumulative_probability(series_list: Union[List[pd.Series], pd.Series], templ
     Returns:
     - Plotly Figure
     """
-    if isinstance(series_list, pd.Series):
-        series_list = [series_list]  # Wrap single series in a list
+    # Validate inputs using the validation utility
+    validated_series = validate_plot_parameters(
+        series_list,
+        template_name,
+        paper_size,
+        function_name="cumulative_probability"
+    )
 
-    assert isinstance(series_list, list) and all(isinstance(series, pd.Series) for series in series_list), \
-        "series_list must be a list of pandas Series or a single pandas Series."
-
-    assert isinstance(y_grid_spacing, int) and 0 < y_grid_spacing <= 100, \
-        "y_grid_spacing must be an integer between 1 and 100."
+    # Validate y_grid_spacing parameter
+    if not isinstance(y_grid_spacing, int) or y_grid_spacing <= 0 or y_grid_spacing > 100:
+        raise ValueError("cumulative_probability: y_grid_spacing must be an integer between 1 and 100")
 
     fig = go.Figure()
 
-    for idx, series in enumerate(series_list):
+    for idx, series in enumerate(validated_series):
         sorted_values = np.sort(series)  # Sort values in ascending order
         cumulative_probs = np.linspace(0, 1, len(series), endpoint=True)  # Probabilities from 0 to 1
 

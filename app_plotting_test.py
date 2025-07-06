@@ -43,9 +43,9 @@ def setup_climatevis_imports(sys):
     except ImportError:
         try:
             # Fallback to local imports if package not installed
-            sys.path.insert(0, ".")
-            from plots import plot_series
-            from util import util_plotly
+            sys.path.insert(0, "src")
+            from climatevis.plots import plot_series
+            from climatevis.util import util_plotly
             # Create fallback dropdown functions
             def create_template_dropdown(value="base", label="Chart Template"):
                 import marimo as mo

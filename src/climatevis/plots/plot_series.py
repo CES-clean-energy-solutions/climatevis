@@ -1,6 +1,7 @@
 import plotly.graph_objects as go
 import pandas as pd
 from ..util import util_plotly
+from ..util.validation import validate_plot_parameters
 
 import logging
 
@@ -20,21 +21,26 @@ def plot_timeseries_df(df, **kwargs):
     Returns:
     - fig (plotly.graph_objects.Figure): The generated Plotly figure.
     """
+    # Validate DataFrame input
     if not isinstance(df, pd.DataFrame):
-        raise ValueError("Input must be a Pandas DataFrame.")
+        raise ValueError("plot_timeseries_df: Input must be a Pandas DataFrame.")
     if not isinstance(df.index, pd.DatetimeIndex):
-        raise ValueError("DataFrame must have a DatetimeIndex.")
+        raise ValueError("plot_timeseries_df: DataFrame must have a DatetimeIndex.")
+    if len(df.columns) == 0:
+        raise ValueError("plot_timeseries_df: DataFrame must have at least one column.")
+
+    # Create series list with proper names
     series_list = [df[col].rename(col) for col in df.columns]
     return plot_series(series_list, **kwargs)
 
-def plot_series(series_list, template_name='base-auto', paper_size='A4_LANDSCAPE', y1_axis_title="", mode="line", show_days=False):
+def plot_series(series_list, template_name='base', paper_size='A4_LANDSCAPE', y1_axis_title="", mode="line", show_days=False):
     """
     Plots a time series using Plotly with customizable display options.
 
     Parameters:
     - series_list (list of pd.Series): List of Pandas Series with a DatetimeIndex.
     - template_name (str): Name of the Plotly template to apply.
-    - paper_size (tuple): Tuple specifying the paper size for the plot.
+    - paper_size (str): Paper size specification.
     - y1_axis_title (str, optional): Title for the primary y-axis.
     - mode (str, optional): Type of plot ('line', 'area', 'bar', 'markers'). Default is 'line'.
     - show_days (bool, optional): If True, adds vertical grid lines at daily intervals. Default is False.
@@ -45,20 +51,16 @@ def plot_series(series_list, template_name='base-auto', paper_size='A4_LANDSCAPE
     Raises:
     - ValueError: If the input series list is invalid, or series indices do not match.
     """
-    if not isinstance(series_list, list) or len(series_list) < 1:
-        raise ValueError("Input must be a list of at least one Pandas Series.")
+    # Comprehensive validation using the validation utility
+    validated_series = validate_plot_parameters(
+        series_list,
+        template_name,
+        paper_size,
+        function_name="plot_series"
+    )
 
-    index_ref = series_list[0].index
-    if not isinstance(index_ref, pd.DatetimeIndex):
-        raise ValueError("All series must have a DatetimeIndex.")
-
-    for series in series_list:
-        if not isinstance(series, pd.Series):
-            raise ValueError("Each item in series_list must be a Pandas Series.")
-        if not isinstance(series.index, pd.DatetimeIndex):
-            raise ValueError("Each series must have a DatetimeIndex.")
-        if not series.index.equals(index_ref):
-            raise ValueError("All series must have the same DatetimeIndex.")
+    # Use the validated series list
+    series_list = validated_series
 
     units = set()
     series_data = []

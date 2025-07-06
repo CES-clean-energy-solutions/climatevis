@@ -1,6 +1,7 @@
 import pandas as pd
 import plotly.express as px
 from climatevis.util import util_plotly
+from climatevis.util.validation import validate_plot_parameters
 
 def multiple_histograms(series_list, template_name: str, paper_size: str, num_bins=None, x_title: str = "Value", y_title: str = "Count"):
     """
@@ -17,10 +18,18 @@ def multiple_histograms(series_list, template_name: str, paper_size: str, num_bi
     Returns:
     - Plotly Figure
     """
+    # Validate inputs using the validation utility
+    validated_series = validate_plot_parameters(
+        series_list,
+        template_name,
+        paper_size,
+        function_name="multiple_histograms"
+    )
+
     fig = go.Figure()
 
     # Iterate over each series to add as a histogram
-    for series in series_list:
+    for series in validated_series:
         # Auto binning heuristic if not specified
         if num_bins is None:
             num_bins = int(max(series) - min(series) + 1)
@@ -50,7 +59,7 @@ def multiple_histograms(series_list, template_name: str, paper_size: str, num_bi
 
         # Add annotation to the plot (top-right corner)
         fig.add_annotation(
-            x=0.95, y=0.95 - 0.1 * series_list.index(series),  # Adjust y position for each series
+            x=0.95, y=0.95 - 0.1 * validated_series.index(series),  # Adjust y position for each series
             xref="paper", yref="paper",
             text=annotation_text,
             showarrow=False,

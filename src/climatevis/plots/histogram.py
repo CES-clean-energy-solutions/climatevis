@@ -1,6 +1,7 @@
 import pandas as pd
 import plotly.express as px
 from climatevis.util import util_plotly
+from climatevis.util.validation import validate_plot_parameters
 
 def histogram(series: pd.Series, template_name: str, paper_size: str, num_bins=None, x_title: str = "Value", y_title: str = "Count"):
     """
@@ -15,6 +16,14 @@ def histogram(series: pd.Series, template_name: str, paper_size: str, num_bins=N
     Returns:
     - Plotly Figure
     """
+    # Validate inputs using the validation utility
+    validate_plot_parameters(
+        series,
+        template_name,
+        paper_size,
+        function_name="histogram"
+    )
+
     if num_bins is None:
         num_bins = int(max(series) - min(series) + 1)  # Auto binning heuristic
 

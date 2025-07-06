@@ -2,6 +2,7 @@ import plotly.graph_objects as go
 import pandas as pd
 import numpy as np
 from climatevis.util import util_plotly
+from climatevis.util.validation import validate_plot_parameters
 
 def monthly_profiles(series: pd.Series, template_name: str, paper_size: str, x_title="Hour of Day", y_title="Value"):
     """
@@ -16,8 +17,13 @@ def monthly_profiles(series: pd.Series, template_name: str, paper_size: str, x_t
     Returns:
     - Plotly Figure
     """
-    if not isinstance(series.index, pd.DatetimeIndex):
-        raise ValueError("Series index must be a DatetimeIndex.")
+    # Validate inputs using the validation utility
+    validate_plot_parameters(
+        series,
+        template_name,
+        paper_size,
+        function_name="monthly_profiles"
+    )
 
     # Convert series to DataFrame and extract month + hour
     df = series.to_frame(name="metric")

@@ -2,6 +2,7 @@ import plotly.graph_objects as go
 import pandas as pd
 import numpy as np
 from climatevis.util import util_plotly
+from climatevis.util.validation import validate_plot_parameters
 import matplotlib.colors as mcolors
 # import plotly.colors as pc
 
@@ -37,9 +38,15 @@ def monthly_profiles_bands(series_list: list, template_name: str, paper_size: st
         "max": "rgba(255, 0, 0, 1.0)"     # Solid Red
     }
 
-    for series in series_list:
-        if not isinstance(series.index, pd.DatetimeIndex):
-            raise ValueError("All series indices must be DatetimeIndex.")
+    # Validate inputs using the validation utility
+    validated_series = validate_plot_parameters(
+        series_list,
+        template_name,
+        paper_size,
+        function_name="monthly_profiles_bands"
+    )
+
+    for series in validated_series:
 
         series_label = series.name if series.name else "Unnamed Series"
         color = series.attrs.get('color', None)

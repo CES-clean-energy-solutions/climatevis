@@ -3,8 +3,37 @@ import pandas as pd
 import numpy as np
 
 from climatevis.util import util_plotly
+from climatevis.util.validation import validate_plot_parameters
 
 def wind_rose(windspeed: pd.Series, sector: pd.Series, template_name: str, paper_size: str):
+    """
+    Create a wind rose plot showing wind speed and direction frequency distribution.
+
+    Parameters:
+    - windspeed (pd.Series): Wind speed data with DatetimeIndex
+    - sector (pd.Series): Wind direction sector data with DatetimeIndex
+    - template_name (str): Name of the Plotly template to apply
+    - paper_size (str): Paper size specification
+
+    Returns:
+    - fig (plotly.graph_objects.Figure): The generated wind rose figure
+    """
+    # Validate inputs using the validation utility
+    validate_plot_parameters(
+        [windspeed],
+        template_name,
+        paper_size,
+        function_name="wind_rose"
+    )
+
+    # Validate sector data
+    if not isinstance(sector, pd.Series):
+        raise ValueError("wind_rose: sector must be a pandas Series")
+    if not isinstance(sector.index, pd.DatetimeIndex):
+        raise ValueError("wind_rose: sector must have DatetimeIndex")
+    if not windspeed.index.equals(sector.index):
+        raise ValueError("wind_rose: windspeed and sector must have the same DatetimeIndex")
+
     # Define wind speed bins
     bins = [0, 2, 5, 10, 15, 20]
     labels = [f'{bins[i]}-{bins[i+1]} m/s' for i in range(len(bins)-1)]
