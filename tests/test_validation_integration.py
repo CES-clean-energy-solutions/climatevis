@@ -9,6 +9,12 @@ import numpy as np
 import pytest
 from datetime import datetime, timedelta
 
+import sys
+import os
+
+# Add src to path for testing
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+
 # Import all plotting functions
 from climatevis.plots.plot_series import plot_series
 from climatevis.plots.plot_series import plot_timeseries_df
