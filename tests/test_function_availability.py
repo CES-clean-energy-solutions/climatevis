@@ -60,9 +60,15 @@ class TestAllPlotFunctions:
         """Test wind_rose function import and basic call."""
         from climatevis import wind_rose
 
-        # Convert arrays to pandas Series
-        wind_speed_series = pd.Series(sample_data['wind_speed'][:1000])
-        sector_series = pd.Series(sample_data['sectors'][:1000])
+        # Convert arrays to pandas Series with DatetimeIndex
+        wind_speed_series = pd.Series(
+            sample_data['wind_speed'][:1000],
+            index=pd.DatetimeIndex(sample_data['datetime'][:1000])
+        )
+        sector_series = pd.Series(
+            sample_data['sectors'][:1000],
+            index=pd.DatetimeIndex(sample_data['datetime'][:1000])
+        )
 
         fig = wind_rose(wind_speed_series, sector_series, 'base', 'A4_LANDSCAPE')
         assert isinstance(fig, go.Figure)
@@ -72,8 +78,11 @@ class TestAllPlotFunctions:
         """Test exceedance function import and basic call."""
         from climatevis import exceedance
 
-        # Convert to pandas Series
-        temp_series = pd.Series(sample_data['temperature'])
+        # Convert to pandas Series with DatetimeIndex
+        temp_series = pd.Series(
+            sample_data['temperature'],
+            index=pd.DatetimeIndex(sample_data['datetime'])
+        )
 
         fig = exceedance(temp_series, 'base', 'A4_LANDSCAPE')
         assert isinstance(fig, go.Figure)
@@ -93,11 +102,21 @@ class TestAllPlotFunctions:
         """Test exceedance_bands function import and basic call."""
         from climatevis import exceedance_bands
 
-        # Create multiple series
+        # Create multiple series with DatetimeIndex - ensure they all have overlapping time ranges
+        base_start = sample_data['datetime'][0]
         series_list = [
-            pd.Series(sample_data['temperature'][:4000]),
-            pd.Series(sample_data['temperature'][2000:6000]),
-            pd.Series(sample_data['temperature'][4000:8000])
+            pd.Series(
+                sample_data['temperature'][:3000],
+                index=pd.DatetimeIndex(sample_data['datetime'][:3000])
+            ),
+            pd.Series(
+                sample_data['temperature'][1000:4000],
+                index=pd.DatetimeIndex(sample_data['datetime'][1000:4000])
+            ),
+            pd.Series(
+                sample_data['temperature'][2000:5000],
+                index=pd.DatetimeIndex(sample_data['datetime'][2000:5000])
+            )
         ]
 
         fig = exceedance_bands(series_list, 'base', 'A4_LANDSCAPE')
@@ -184,9 +203,13 @@ class TestAllPlotFunctions:
         """Test plot_timeseries_df function import and basic call."""
         from climatevis import plot_timeseries_df
 
-        # Create DataFrame with datetime index
-        df = pd.DataFrame(sample_data)
-        df = df.set_index('datetime')
+        # Create DataFrame with datetime index - only numeric columns
+        df = pd.DataFrame({
+            'temperature': sample_data['temperature'],
+            'wind_speed': sample_data['wind_speed'],
+            'humidity': sample_data['humidity'],
+            'pressure': sample_data['pressure']
+        }, index=pd.DatetimeIndex(sample_data['datetime']))
 
         # This function uses the default 'base-auto' template which we've loaded
         fig = plot_timeseries_df(df)
@@ -208,7 +231,10 @@ class TestAllPlotFunctions:
         """Test histogram function import and basic call."""
         from climatevis import histogram
 
-        temp_series = pd.Series(sample_data['temperature'])
+        temp_series = pd.Series(
+            sample_data['temperature'],
+            index=pd.DatetimeIndex(sample_data['datetime'])
+        )
         fig = histogram(temp_series, 'base', 'A4_LANDSCAPE')
         assert isinstance(fig, go.Figure)
         assert len(fig.data) > 0
@@ -219,7 +245,10 @@ class TestAllPlotFunctions:
         """Test cumulative_probability function import and basic call."""
         from climatevis import cumulative_probability
 
-        temp_series = pd.Series(sample_data['temperature'])
+        temp_series = pd.Series(
+            sample_data['temperature'],
+            index=pd.DatetimeIndex(sample_data['datetime'])
+        )
         fig = cumulative_probability(temp_series, 'base', 'A4_LANDSCAPE')
         assert isinstance(fig, go.Figure)
         assert len(fig.data) > 0

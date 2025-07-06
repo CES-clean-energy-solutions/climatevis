@@ -24,18 +24,21 @@ def monthly_profiles_bands(series_list: list, template_name: str, paper_size: st
     """
 
     def adjust_alpha(color: str, alpha=0.1):
-        rgb = mcolors.to_rgb(color)
-        rgba = rgb + (alpha,)
-        rgba_str = f"rgba({int(rgb[0]*255)}, {int(rgb[1]*255)}, {int(rgb[2]*255)}, {alpha})"
-        return rgba_str
+        try:
+            rgb = mcolors.to_rgb(color)
+            rgba_str = f"rgba({int(rgb[0]*255)}, {int(rgb[1]*255)}, {int(rgb[2]*255)}, {alpha})"
+            return rgba_str
+        except ValueError:
+            # Fallback to a safe color if the input color is invalid
+            return f"rgba(0, 123, 255, {alpha})"
 
     fig = go.Figure()
     month_labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
     default_colors = {
-        "min": "rgba(0, 123, 255, 1.0)",  # Solid Blue
-        "mean": "rgba(0, 0, 0, 1.0)",     # Solid Black
-        "max": "rgba(255, 0, 0, 1.0)"     # Solid Red
+        "min": "#007bff",  # Solid Blue (hex format)
+        "mean": "#000000", # Solid Black (hex format)
+        "max": "#ff0000"   # Solid Red (hex format)
     }
 
     # Validate inputs using the validation utility

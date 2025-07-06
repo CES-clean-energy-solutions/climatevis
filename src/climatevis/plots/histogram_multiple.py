@@ -1,5 +1,6 @@
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 from climatevis.util import util_plotly
 from climatevis.util.validation import validate_plot_parameters
 
@@ -29,14 +30,15 @@ def multiple_histograms(series_list, template_name: str, paper_size: str, num_bi
     fig = go.Figure()
 
     # Iterate over each series to add as a histogram
-    for series in validated_series:
+    for i, series in enumerate(validated_series):
         # Auto binning heuristic if not specified
         if num_bins is None:
-            num_bins = int(max(series) - min(series) + 1)
+            num_bins = int(series.max() - series.min() + 1)
 
         # Compute statistics
         mean_value = series.mean()
-        mode_value = series.mode()[0] if not series.mode().empty else None
+        mode_series = series.mode()
+        mode_value = mode_series.iloc[0] if len(mode_series) > 0 else None
         std_dev = series.std()
 
         # Add histogram trace
@@ -59,7 +61,7 @@ def multiple_histograms(series_list, template_name: str, paper_size: str, num_bi
 
         # Add annotation to the plot (top-right corner)
         fig.add_annotation(
-            x=0.95, y=0.95 - 0.1 * validated_series.index(series),  # Adjust y position for each series
+            x=0.95, y=0.95 - 0.1 * i,  # Adjust y position for each series
             xref="paper", yref="paper",
             text=annotation_text,
             showarrow=False,

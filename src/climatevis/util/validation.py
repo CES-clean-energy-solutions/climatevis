@@ -261,7 +261,7 @@ def validate_data_quality(
         series_name = series.name or f"Series {i}"
 
         # Check for NaN values
-        nan_count = series.isna().sum()
+        nan_count = series.isna().sum().item()
         if nan_count > 0:
             logging.warning(
                 f"{function_name}: {series_name} contains {nan_count} NaN values "
@@ -270,7 +270,7 @@ def validate_data_quality(
             )
 
         # Check for infinite values
-        inf_count = np.isinf(series).sum()
+        inf_count = np.isinf(series).sum().item()
         if inf_count > 0:
             logging.warning(
                 f"{function_name}: {series_name} contains {inf_count} infinite values. "
@@ -286,7 +286,7 @@ def validate_data_quality(
             )
 
         # Check for constant data (might indicate issues)
-        if len(valid_data) > 1 and valid_data.std() == 0:
+        if len(valid_data) > 1 and valid_data.std().item() == 0:
             logging.info(
                 f"{function_name}: {series_name} has constant values "
                 f"({valid_data.iloc[0]}). This may result in a flat line plot."
