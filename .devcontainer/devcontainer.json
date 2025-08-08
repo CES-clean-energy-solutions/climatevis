@@ -4,6 +4,10 @@
         "dockerfile": "./Dockerfile",
         "context": ".."
     },
+    "mounts": [
+        "source=/mnt/c/git/agentic-central,target=/mnt/c/git/agentic-central,type=bind,consistency=cached"
+    ],
+    "postStartCommand": "sudo ln -sf /mnt/c/git/agentic-central /workspaces/climatevis/.claude",
     "customizations": {
         "vscode": {
             "settings": {
