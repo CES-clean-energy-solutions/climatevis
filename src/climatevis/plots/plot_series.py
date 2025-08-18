@@ -42,7 +42,7 @@ def plot_series(series_list, template_name='base', paper_size='A4_LANDSCAPE', y1
     - template_name (str): Name of the Plotly template to apply.
     - paper_size (str): Paper size specification.
     - y1_axis_title (str, optional): Title for the primary y-axis.
-    - mode (str, optional): Type of plot ('line', 'area', 'bar', 'markers'). Default is 'line'.
+    - mode (str, optional): Type of plot ('line', 'area', 'bar', 'stackedbar', 'markers'). Default is 'line'.
     - show_days (bool, optional): If True, adds vertical grid lines at daily intervals. Default is False.
 
     Returns:
@@ -96,10 +96,12 @@ def plot_series(series_list, template_name='base', paper_size='A4_LANDSCAPE', y1
             trace = go.Scatter(mode="lines", fill="tozeroy", **trace_kwargs)
         elif mode == "bar":
             trace = go.Bar(**trace_kwargs)
+        elif mode == "stackedbar":
+            trace = go.Bar(**trace_kwargs)
         elif mode == "markers":
             trace = go.Scatter(mode="markers", **trace_kwargs)
         else:
-            raise ValueError("Invalid mode. Choose from 'line', 'area', 'bar', or 'markers'.")
+            raise ValueError("Invalid mode. Choose from 'line', 'area', 'bar', 'stackedbar', or 'markers'.")
 
         fig.add_trace(trace)
 
@@ -110,7 +112,7 @@ def plot_series(series_list, template_name='base', paper_size='A4_LANDSCAPE', y1
             "side": "left",
             "showgrid": True
         },
-        "barmode": "overlay" if mode == "bar" else None
+        "barmode": "stack" if mode == "stackedbar" else ("overlay" if mode == "bar" else None)
     }
 
     if y2_label:
