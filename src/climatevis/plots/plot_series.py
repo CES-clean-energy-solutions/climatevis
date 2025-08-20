@@ -70,7 +70,10 @@ def plot_series(series_list, template_name='base', paper_size='A4_LANDSCAPE', y1
         name = getattr(series, 'name', 'Unnamed')
         unit = series.attrs.get("unit", None)
         units.add(unit)
-        series_data.append({'series': series, 'name': name, 'unit': unit, 'color': colors[i % len(colors)]})
+        # Get custom attributes with defaults
+        linestyle = series.attrs.get("linestyle", "solid")  # Default to solid line
+        color = series.attrs.get("color", colors[i % len(colors)])  # Default to predefined colors
+        series_data.append({'series': series, 'name': name, 'unit': unit, 'color': color, 'linestyle': linestyle})
 
     if len(units) > 2:
         raise ValueError("More than two unique units detected. Only up to two units are supported.")
@@ -91,8 +94,10 @@ def plot_series(series_list, template_name='base', paper_size='A4_LANDSCAPE', y1
         }
 
         if mode == "line":
+            trace_kwargs["line"] = {"dash": data['linestyle']}
             trace = go.Scatter(mode="lines", **trace_kwargs)
         elif mode == "area":
+            trace_kwargs["line"] = {"dash": data['linestyle']}
             trace = go.Scatter(mode="lines", fill="tozeroy", **trace_kwargs)
         elif mode == "bar":
             trace = go.Bar(**trace_kwargs)
@@ -120,10 +125,13 @@ def plot_series(series_list, template_name='base', paper_size='A4_LANDSCAPE', y1
             "title": y2_label,
             "overlaying": "y",
             "side": "right",
-            "showgrid": False
+            "showgrid": False,
+            "title_standoff": 25  # Add padding between axis labels and title
         }
 
     if show_days:
+        # Get the time index from the first series
+        index_ref = series_list[0].index
         min_time = index_ref.min()
         max_time = index_ref.max()
         day_ticks = pd.date_range(start=min_time, end=max_time, freq='D')
